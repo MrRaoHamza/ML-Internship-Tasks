@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>California Housing Price Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.5rem;
+        }
+        
+        .metric-card {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            margin-bottom: 1rem;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .btn-predict {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 2rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .prediction-result {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+        
+        .prediction-price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="text-center text-white">
+                    <h1 class="display-4 fw-bold mb-3">🏠 California Housing Price Predictor</h1>
+                    <p class="lead">Machine Learning Model Dashboard</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Model Metrics -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div class="metric-value">{{ "%.3f"|format(model_metrics.test_r2) }}</div>
+                    <div class="text-muted">R² Score</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div class="metric-value">{{ "%.3f"|format(model_metrics.test_rmse) }}</div>
+                    <div class="text-muted">RMSE</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div class="metric-value">{{ "%.3f"|format(model_metrics.test_mae) }}</div>
+                    <div class="text-muted">MAE</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Prediction Form -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">🔮 Price Prediction</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="predictionForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Median Income</label>
+                                    <input type="number" class="form-control" name="MedInc" step="0.1" value="5.0" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">House Age</label>
+                                    <input type="number" class="form-control" name="HouseAge" step="1" value="10" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Average Rooms</label>
+                                    <input type="number" class="form-control" name="AveRooms" step="0.1" value="6.0" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Average Bedrooms</label>
+                                    <input type="number" class="form-control" name="AveBedrms" step="0.1" value="1.2" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Population</label>
+                                    <input type="number" class="form-control" name="Population" step="100" value="3000" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Average Occupancy</label>
+                                    <input type="number" class="form-control" name="AveOccup" step="0.1" value="3.0" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Latitude</label>
+                                    <input type="number" class="form-control" name="Latitude" step="0.01" value="34.0" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Longitude</label>
+                                    <input type="number" class="form-control" name="Longitude" step="0.01" value="-118.0" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="loadSample('luxury')">Luxury Sample</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="loadSample('average')">Average Sample</button>
+                                <button type="button" class="btn btn-outline-warning btn-sm" onclick="loadSample('budget')">Budget Sample</button>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-predict w-100">
+                                🎯 Predict Price
+                            </button>
+                        </form>
+                        
+                        <div id="predictionResult" class="prediction-result" style="display: none;">
+                            <div class="prediction-price" id="predictedPrice"></div>
+                            <div class="text-muted">Predicted House Price</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="col-lg-6">
+                <!-- Dataset Info -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">📊 Dataset Overview</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Total Samples:</strong> {{ dataset_info.total_samples }}</p>
+                        <p><strong>Features:</strong> {{ dataset_info.features_count }}</p>
+                        <p><strong>Average Price:</strong> {{ dataset_info.target_mean }}</p>
+                        <p><strong>Price Std Dev:</strong> {{ dataset_info.target_std }}</p>
+                    </div>
+                </div>
+
+                <!-- Feature Importance -->
+                {% if feature_importance %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">⭐ Top Features</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for feature, importance in feature_importance.items() %}
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>{{ feature }}</span>
+                            <span class="badge bg-primary">{{ "%.3f"|format(importance) }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Price Distribution -->
+                {% if distribution_plot %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📈 Price Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <img src="data:image/png;base64,{{ distribution_plot }}" class="img-fluid" alt="Price Distribution">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Correlation Matrix -->
+        {% if correlation_plot %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">🔗 Feature Correlations</h5>
+                    </div>
+                    <div class="card-body">
+                        <img src="data:image/png;base64,{{ correlation_plot }}" class="img-fluid" alt="Correlation Matrix">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sample data
+        const samples = {
+            luxury: {
+                MedInc: 8.0, HouseAge: 5, AveRooms: 8.0, AveBedrms: 1.5,
+                Population: 2000, AveOccup: 2.5, Latitude: 37.8, Longitude: -122.4
+            },
+            average: {
+                MedInc: 4.0, HouseAge: 15, AveRooms: 5.5, AveBedrms: 1.1,
+                Population: 3500, AveOccup: 3.2, Latitude: 34.0, Longitude: -118.0
+            },
+            budget: {
+                MedInc: 2.5, HouseAge: 25, AveRooms: 4.0, AveBedrms: 1.0,
+                Population: 5000, AveOccup: 4.0, Latitude: 32.7, Longitude: -117.2
+            }
+        };
+
+        function loadSample(type) {
+            const form = document.getElementById('predictionForm');
+            const sample = samples[type];
+            for (const [key, value] of Object.entries(sample)) {
+                form.querySelector(`[name="${key}"]`).value = value;
+            }
+        }
+
+        // Form submission
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const button = e.target.querySelector('button[type="submit"]');
+            const resultDiv = document.getElementById('predictionResult');
+            const priceDiv = document.getElementById('predictedPrice');
+            
+            button.disabled = true;
+            button.textContent = '🔄 Predicting...';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    priceDiv.textContent = result.predicted_price;
+                    resultDiv.style.display = 'block';
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = '🎯 Predict Price';
+            }
+        });
+    </script>
+</body>
+</html>

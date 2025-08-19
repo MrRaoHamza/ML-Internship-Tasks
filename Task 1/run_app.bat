@@ -1,0 +1,9 @@
+@echo off
+echo Starting Email Spam Classification Dashboard...
+echo.
+echo Installing dependencies...
+pip install -r requirements.txt
+echo.
+echo Starting Flask application...
+python app.py
+pause

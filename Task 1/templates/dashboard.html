@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Spam Classification Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .metric-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .prediction-result {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .spam-result {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .ham-result {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .sample-email {
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .sample-email:hover {
+            background-color: #f8f9fa;
+        }
+        .loading {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-shield-alt"></i> Email Spam Classification Dashboard</h1>
+                    <p class="lead">Machine Learning-powered email spam detection system</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light btn-lg" onclick="trainModel()">
+                        <i class="fas fa-cogs"></i> Train Model
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <!-- Model Metrics Row -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="metric-value" id="accuracy">--</div>
+                    <div class="text-muted">Accuracy</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="metric-value" id="precision">--</div>
+                    <div class="text-muted">Precision (Spam)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="metric-value" id="recall">--</div>
+                    <div class="text-muted">Recall (Spam)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="metric-value" id="f1score">--</div>
+                    <div class="text-muted">F1-Score (Spam)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Email Classification Panel -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-envelope"></i> Email Classification</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="emailText" class="form-label">Enter Email Text:</label>
+                            <textarea class="form-control" id="emailText" rows="6" 
+                                placeholder="Paste your email content here..."></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="classifyEmail()">
+                                <i class="fas fa-search"></i> Classify Email
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearText()">
+                                <i class="fas fa-eraser"></i> Clear
+                            </button>
+                        </div>
+                        
+                        <div id="predictionResult" style="display: none;"></div>
+                        
+                        <div class="loading text-center mt-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confusion Matrix -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-bar"></i> Model Performance</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <div id="confusionMatrix">
+                            <p class="text-muted">Train the model to see confusion matrix</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sample Emails Panel -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-samples"></i> Sample Emails</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Spam Examples</h6>
+                        <div id="spamSamples" class="mb-3"></div>
+                        
+                        <h6 class="text-success"><i class="fas fa-check-circle"></i> Ham Examples</h6>
+                        <div id="hamSamples"></div>
+                        
+                        <button class="btn btn-outline-primary btn-sm mt-3" onclick="loadSamples()">
+                            <i class="fas fa-refresh"></i> Load Samples
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Performance Chart -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-pie"></i> Classification Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="performanceChart" width="300" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let performanceChart = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMetrics();
+            loadSamples();
+            initChart();
+        });
+
+        function trainModel() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Training...';
+            btn.disabled = true;
+
+            fetch('/train_model', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Model trained successfully!', 'success');
+                    loadMetrics();
+                    loadConfusionMatrix();
+                    updateChart(data.metrics);
+                } else {
+                    showAlert('Error: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'danger');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+
+        function classifyEmail() {
+            const emailText = document.getElementById('emailText').value.trim();
+            if (!emailText) {
+                showAlert('Please enter an email text to classify.', 'warning');
+                return;
+            }
+
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('predictionResult').style.display = 'none';
+
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({email_text: emailText})
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.querySelector('.loading').style.display = 'none';
+                
+                if (data.success) {
+                    showPredictionResult(data);
+                } else {
+                    showAlert('Error: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                document.querySelector('.loading').style.display = 'none';
+                showAlert('Error: ' + error.message, 'danger');
+            });
+        }
+
+        function showPredictionResult(data) {
+            const resultDiv = document.getElementById('predictionResult');
+            const isSpam = data.prediction === 'spam';
+            const resultClass = isSpam ? 'spam-result' : 'ham-result';
+            const icon = isSpam ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle';
+            
+            resultDiv.innerHTML = `
+                <div class="prediction-result ${resultClass}">
+                    <h6><i class="${icon}"></i> Classification Result</h6>
+                    <p><strong>Prediction:</strong> ${data.prediction.toUpperCase()}</p>
+                    <p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(2)}%</p>
+                    <div class="row">
+                        <div class="col-6">
+                            <small>Spam Probability: ${(data.spam_probability * 100).toFixed(2)}%</small>
+                        </div>
+                        <div class="col-6">
+                            <small>Ham Probability: ${(data.ham_probability * 100).toFixed(2)}%</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            resultDiv.style.display = 'block';
+        }
+
+        function loadMetrics() {
+            fetch('/get_metrics')
+            .then(response => response.json())
+            .then(data => {
+                if (Object.keys(data).length > 0) {
+                    document.getElementById('accuracy').textContent = (data.accuracy * 100).toFixed(1) + '%';
+                    document.getElementById('precision').textContent = (data.precision_spam * 100).toFixed(1) + '%';
+                    document.getElementById('recall').textContent = (data.recall_spam * 100).toFixed(1) + '%';
+                    document.getElementById('f1score').textContent = (data.f1_spam * 100).toFixed(1) + '%';
+                }
+            });
+        }
+
+        function loadConfusionMatrix() {
+            fetch('/get_confusion_matrix')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('confusionMatrix').innerHTML = 
+                        `<img src="${data.image}" class="img-fluid" alt="Confusion Matrix">`;
+                }
+            });
+        }
+
+        function loadSamples() {
+            fetch('/sample_emails')
+            .then(response => response.json())
+            .then(data => {
+                const spamDiv = document.getElementById('spamSamples');
+                const hamDiv = document.getElementById('hamSamples');
+                
+                spamDiv.innerHTML = data.spam.map(email => 
+                    `<div class="sample-email border" onclick="useEmail('${email.replace(/'/g, "\\'")}')">${email.substring(0, 60)}...</div>`
+                ).join('');
+                
+                hamDiv.innerHTML = data.ham.map(email => 
+                    `<div class="sample-email border" onclick="useEmail('${email.replace(/'/g, "\\'")}')">${email.substring(0, 60)}...</div>`
+                ).join('');
+            });
+        }
+
+        function useEmail(email) {
+            document.getElementById('emailText').value = email;
+        }
+
+        function clearText() {
+            document.getElementById('emailText').value = '';
+            document.getElementById('predictionResult').style.display = 'none';
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Spam', 'Ham'],
+                    datasets: [{
+                        data: [50, 50],
+                        backgroundColor: ['#dc3545', '#28a745'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart(metrics) {
+            if (performanceChart && metrics) {
+                const spamF1 = metrics.f1_spam * 100;
+                const hamF1 = metrics.f1_ham * 100;
+                performanceChart.data.datasets[0].data = [spamF1, hamF1];
+                performanceChart.update();
+            }
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
